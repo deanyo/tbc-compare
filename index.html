@@ -131,6 +131,9 @@
       flex-direction: column;
       gap: 6px;
     }
+    .field.is-hidden {
+      display: none;
+    }
     .field span {
       color: var(--muted);
       font-size: 11px;
@@ -283,6 +286,18 @@
     .status-warn { color: var(--warn); }
     .status-ok { color: var(--accent-3); }
     .status-bad { color: var(--danger); }
+    .banner {
+      margin: 0 0 18px 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(240, 194, 123, 0.4);
+      background: rgba(240, 194, 123, 0.12);
+      color: var(--warn);
+      font-size: 11px;
+      text-transform: lowercase;
+      display: none;
+    }
+    .banner.is-visible { display: block; }
     @keyframes rise {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -310,6 +325,7 @@
       </div>
       <div class="hero-tag" id="api-tag"><span class="dot"></span><span id="api-status">demo mode</span></div>
     </header>
+    <div class="banner" id="archive-banner"></div>
 
     <section class="panel" style="animation-delay: 0.05s;">
       <div class="panel-head">
@@ -322,26 +338,26 @@
             <span>region</span>
             <select id="region">
               <option value="us">us</option>
-              <option value="eu">eu</option>
+              <option value="eu" selected>eu</option>
               <option value="kr">kr</option>
               <option value="tw">tw</option>
             </select>
           </label>
           <label class="field">
             <span>realm</span>
-            <input id="realm" placeholder="example: gehennas">
+            <input id="realm" placeholder="example: gehennas" value="hydraxian-waterlords">
           </label>
           <label class="field">
             <span>character</span>
-            <input id="character" placeholder="example: dnyo">
+            <input id="character" placeholder="example: dnyo" value="Okta">
           </label>
           <label class="field">
             <span>report or fight url</span>
-            <input id="report-url" placeholder="https://classic.warcraftlogs.com/reports/...">
+            <input id="report-url" placeholder="https://classic.warcraftlogs.com/reports/..." value="https://classic.warcraftlogs.com/reports/DtFKz46QWX2JRbmx?fight=94&type=damage-done">
           </label>
           <label class="field">
             <span>fight number</span>
-            <input id="fight-id" placeholder="example: 5">
+            <input id="fight-id" placeholder="example: 5" value="94">
           </label>
           <label class="field">
             <span>spec</span>
@@ -353,7 +369,7 @@
               <option value="rogue-combat">rogue - combat</option>
               <option value="warrior-arms">warrior - arms</option>
               <option value="shaman-enhance">shaman - enhancement</option>
-              <option value="shaman-ele">shaman - elemental</option>
+              <option value="shaman-ele" selected>shaman - elemental</option>
               <option value="priest-shadow">priest - shadow</option>
               <option value="druid-feral">druid - feral</option>
             </select>
@@ -373,7 +389,7 @@
           </label>
           <label class="field">
             <span>compare report url</span>
-            <input id="compare-report-url" placeholder="https://classic.warcraftlogs.com/reports/...">
+            <input id="compare-report-url" placeholder="https://classic.warcraftlogs.com/reports/..." value="https://classic.warcraftlogs.com/reports/pvAyQmw7zg6rMjfk?fight=76&type=damage-done">
           </label>
           <label class="field">
             <span>notes</span>
@@ -465,8 +481,12 @@
     const apiStatus = document.getElementById("api-status");
     const apiTag = document.getElementById("api-tag");
     const dataSource = document.getElementById("data-source");
+    const archiveBanner = document.getElementById("archive-banner");
     const form = document.getElementById("compare-form");
     const sampleBtn = document.getElementById("sample-btn");
+    const reportUrlInput = document.getElementById("report-url");
+    const fightInput = document.getElementById("fight-id");
+    const fightField = fightInput.closest(".field");
 
     const statDps = document.getElementById("stat-dps");
     const statDpsSub = document.getElementById("stat-dps-sub");
@@ -521,6 +541,32 @@
       const fightMatch = url.match(/fight=([0-9]+)/);
       const fightId = fightInput || (fightMatch ? fightMatch[1] : "");
       return { reportId, fightId };
+    }
+
+    function syncFightField() {
+      const url = reportUrlInput.value.trim();
+      const match = url.match(/fight=([0-9]+)/);
+      if (match) {
+        fightInput.value = match[1];
+        fightField.classList.add("is-hidden");
+      } else {
+        fightField.classList.remove("is-hidden");
+      }
+    }
+
+    function updateArchiveBanner(meta) {
+      const archivedMain = meta?.reportArchived && !meta?.reportAccessible;
+      const archivedCompare = meta?.compareReportArchived && !meta?.compareReportAccessible;
+      if (!archivedMain && !archivedCompare) {
+        archiveBanner.classList.remove("is-visible");
+        archiveBanner.textContent = "";
+        return;
+      }
+      const parts = [];
+      if (archivedMain) parts.push("base report");
+      if (archivedCompare) parts.push("compare report");
+      archiveBanner.textContent = `archived log → rankings-only mode (${parts.join(" + ")}).`;
+      archiveBanner.classList.add("is-visible");
     }
 
     function clearList(listEl) {
@@ -633,6 +679,7 @@
       renderGaps(demoData.gaps);
       renderRotation(demoData.rotation, demoData.wowhead);
       renderCoach(demoData.coach);
+      updateArchiveBanner(null);
     }
 
     async function fetchComparison(payload) {
@@ -675,25 +722,26 @@
       };
     }
 
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const payload = collectPayload();
+    async function performCompare(payload, options = {}) {
+      const silent = options.silent || false;
       if (!payload.realm && !payload.reportId) {
-        setStatus("add a realm or report url", "status-bad");
-        return;
+        if (!silent) setStatus("add a realm or report url", "status-bad");
+        return false;
       }
       if (!payload.comparePlayer && !payload.compareReportUrl) {
-        setStatus("add a compare player or compare report url", "status-bad");
-        return;
+        if (!silent) setStatus("add a compare player or compare report url", "status-bad");
+        return false;
       }
       setStatus("loading comparison", "status-ok");
       dataSource.textContent = "data source: api";
       try {
         const data = await fetchComparison(payload);
         if (!data || data.error) {
-          setStatus("api error, showing demo", "status-warn");
-          loadDemo();
-          return;
+          if (!silent) {
+            setStatus("api error, showing demo", "status-warn");
+            loadDemo();
+          }
+          return false;
         }
         if (data.meta?.demo) {
           setStatus("demo mode: " + (data.meta.reason || "check inputs"), "status-warn");
@@ -704,17 +752,40 @@
         renderGaps(data.gaps || []);
         renderRotation(data.rotation || [], data.wowhead);
         renderCoach(data.coach || []);
+        updateArchiveBanner(data.meta);
+        return true;
       } catch (error) {
-        setStatus("api error, showing demo", "status-warn");
-        loadDemo();
+        if (!silent) {
+          setStatus("api error, showing demo", "status-warn");
+          loadDemo();
+        }
+        return false;
       }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const payload = collectPayload();
+      await performCompare(payload);
     });
 
     sampleBtn.addEventListener("click", () => {
       loadDemo();
     });
 
-    loadDemo();
+    reportUrlInput.addEventListener("input", syncFightField);
+    syncFightField();
+
+    const autoPayload = collectPayload();
+    const shouldAutoCompare = autoPayload.reportId && autoPayload.fightId &&
+      (autoPayload.compareReportUrl || autoPayload.comparePlayer);
+    if (shouldAutoCompare) {
+      performCompare(autoPayload, { silent: true }).then((didCompare) => {
+        if (!didCompare) loadDemo();
+      });
+    } else {
+      loadDemo();
+    }
   </script>
 </body>
 </html>
