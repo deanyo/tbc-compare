@@ -314,7 +314,7 @@
     <section class="panel" style="animation-delay: 0.05s;">
       <div class="panel-head">
         <h2>inputs</h2>
-        <div class="panel-note">paste a report, or enter realm and character. compare player can be name-realm.</div>
+        <div class="panel-note">paste a report, or enter realm and character. compare player can be name-realm or use a compare report url.</div>
       </div>
       <form id="compare-form" autocomplete="off">
         <div class="field-grid">
@@ -369,7 +369,11 @@
           </label>
           <label class="field">
             <span>compare player</span>
-            <input id="compare-player" placeholder="example: arcflare-gehennas">
+            <input id="compare-player" placeholder="example: okta-hydraxian-waterlords">
+          </label>
+          <label class="field">
+            <span>compare report url</span>
+            <input id="compare-report-url" placeholder="https://classic.warcraftlogs.com/reports/...">
           </label>
           <label class="field">
             <span>notes</span>
@@ -653,6 +657,7 @@
       const spec = document.getElementById("spec").value;
       const compareTo = document.getElementById("compare-to").value;
       const comparePlayer = document.getElementById("compare-player").value.trim();
+      const compareReportUrl = document.getElementById("compare-report-url").value.trim();
       const notes = document.getElementById("notes").value.trim();
       const parsed = parseReportInput(reportUrl, fightInput);
       return {
@@ -665,6 +670,7 @@
         spec,
         compareTo,
         comparePlayer,
+        compareReportUrl,
         notes
       };
     }
@@ -674,6 +680,10 @@
       const payload = collectPayload();
       if (!payload.realm && !payload.reportId) {
         setStatus("add a realm or report url", "status-bad");
+        return;
+      }
+      if (!payload.comparePlayer && !payload.compareReportUrl) {
+        setStatus("add a compare player or compare report url", "status-bad");
         return;
       }
       setStatus("loading comparison", "status-ok");

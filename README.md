@@ -11,3 +11,5 @@ Worker proxy at `dnyo-wclogs-proxy`.
 ## Notes
 - Compare player supports `name-realm` or `name@realm`. If omitted, it falls
   back to the realm field.
+- Compare report URL lets you compare two specific runs (same player or
+  another player on that report).
