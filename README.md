@@ -1,4 +1,4 @@
-# tbc-compare.github.io
+# tbc-compare
 
 Static comparison UI for Warcraft Logs (TBC). Connects to the Cloudflare
 Worker proxy at `dnyo-wclogs-proxy`.
