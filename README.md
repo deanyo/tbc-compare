@@ -1,6 +1,7 @@
 # tbc-compare
 
 [![pages-build-deployment](https://github.com/deanyo/tbc-compare/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/deanyo/tbc-compare/actions/workflows/pages/pages-build-deployment)
+![WIP](https://img.shields.io/badge/status-WIP-yellow)
 
 Compare your Warcraft Logs parses to top TBC players.
 
